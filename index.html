@@ -26,6 +26,8 @@
   .board{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:auto}
   .cell{position:relative;aspect-ratio:1/1;background:var(--cell);border:1px solid var(--cellbd);border-radius:10px;cursor:pointer;overflow:hidden;transition:border-color .15s,box-shadow .2s}
   .cell:hover{border-color:#2c3e57}
+  @keyframes cellIn{from{transform:translate(var(--dx,0),var(--dy,0)) scale(.5);opacity:0}to{transform:translate(0,0) scale(1);opacity:1}}
+  .cell.enter{animation:cellIn .4s cubic-bezier(.2,.85,.25,1) both}
   .cell.box-edge-r{margin-right:6px}
   .cell.box-edge-b{margin-bottom:6px}
   .cell.welded{border-color:#243244;background:#0b1119;cursor:default}
@@ -109,6 +111,19 @@
   .overlay .t1{font-size:18px;font-weight:800;color:#ffd9a0}
   .overlay .t2{font-size:13px;color:var(--dim);line-height:1.6;max-width:300px}
   .overlay .cls{margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:9px 20px;font-size:13px;color:#cfdae6;cursor:pointer}
+  .cmodal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:120;padding:20px}
+  .cmodal.show{display:flex}
+  .ccard{background:#2b323c;border:1px solid #3a4451;border-radius:18px;padding:26px 26px 20px;max-width:440px;width:100%;text-align:center;transform:translateY(28px);opacity:0;transition:transform .3s cubic-bezier(.2,.85,.25,1),opacity .28s}
+  .cmodal.show .ccard{transform:translateY(0);opacity:1}
+  .ccard .ct{font-size:19px;font-weight:800;color:#f2f6fb;margin-bottom:8px}
+  .ccard .cs{font-size:13px;color:#aab6c4;margin-bottom:18px;line-height:1.5}
+  .ccard .cprog{display:flex;align-items:center;justify-content:space-between;background:#20262e;border:1px solid #333c47;border-radius:10px;padding:14px 16px;font-size:14px;color:#cfdae6;margin-bottom:16px}
+  .ccard .cprog b{font-weight:800;color:#eaf6ff}
+  .ccard .cbtns{display:flex;gap:10px}
+  .ccard .cbtn{flex:1;border-radius:11px;padding:13px 0;font-size:14px;font-weight:700;cursor:pointer;border:1px solid #3a4451;background:#20262e;color:#cfdae6;display:flex;align-items:center;justify-content:center;gap:7px}
+  .ccard .cbtn.prim{background:#2fae6a;border-color:#3fce7f;color:#06210f}
+  .ccard .cbtn kbd{font-size:10px;font-weight:700;background:rgba(255,255,255,.16);border-radius:5px;padding:2px 6px;font-family:inherit}
+  .ccard .cbtn.prim kbd{background:rgba(0,0,0,.18)}
 </style>
 </head>
 <body>
@@ -177,6 +192,18 @@
   </div>
 </div>
 
+<div class="cmodal" id="resetModal">
+  <div class="ccard">
+    <div class="ct">퍼즐을 초기화 하시겠습니까?</div>
+    <div class="cs">진행도가 0%로 초기화되고, 새로운 퍼즐로 리셋됩니다</div>
+    <div class="cprog"><span>튜닝 진행도</span><b id="cPct">0%</b></div>
+    <div class="cbtns">
+      <button class="cbtn" id="cCancel"><kbd>ESC</kbd> 취소</button>
+      <button class="cbtn prim" id="cOk"><kbd>Space</kbd> 초기화한다</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const BOARDS=[{"shape":["corner","corner","corner","corner","corner","corner","straight","corner","corner","corner","corner","straight","corner","straight","corner","corner","straight","corner","corner","straight","corner","corner","straight","corner","straight","corner","corner","corner","corner","end","corner","corner","corner","corner","corner","end"],"solRot":[1,2,1,2,1,2,0,0,3,0,3,0,0,1,2,1,1,3,1,1,3,0,1,2,0,1,2,1,2,0,0,3,0,3,0,3],"START":29,"END":35,"weldMask":[1,0,1,1,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0],"numLock":[0,0,0,0,0,0,0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0,0,5,0]},{"shape":["corner","corner","corner","straight","straight","corner","straight","corner","corner","corner","straight","corner","straight","corner","end","corner","straight","corner","corner","corner","corner","corner","corner","corner","corner","straight","corner","corner","corner","end","corner","straight","straight","straight","straight","corner"],"solRot":[1,2,1,1,1,2,0,0,3,1,1,3,0,1,3,0,1,2,0,3,1,2,1,3,1,1,3,0,3,2,0,1,1,1,1,3],"START":14,"END":29,"weldMask":[0,0,1,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,1,0,0,0,0,0,0,0,1,1,0,0,0,1],"numLock":[0,0,0,6,0,0,0,0,0,5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,0]},{"shape":["corner","straight","straight","straight","straight","corner","straight","corner","straight","straight","corner","straight","straight","corner","corner","corner","corner","end","straight","corner","corner","straight","corner","corner","straight","corner","corner","straight","end","straight","corner","straight","corner","corner","straight","corner"],"solRot":[1,1,1,1,1,2,0,1,1,1,2,0,0,0,2,1,3,0,0,1,3,0,1,2,0,0,2,0,0,0,0,1,3,0,1,3],"START":28,"END":17,"weldMask":[0,0,0,0,1,0,1,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,1,1,0,0,0,0],"numLock":[5,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,4,0,6,0]}];
 
@@ -186,9 +213,9 @@ const SHAPE={straight:T|B,corner:T|R,end:T};
 const ORIENTS={straight:2,corner:4,end:4};
 const fmtHM=s=>{s=Math.max(0,Math.round(s));const m=Math.round(s/60);if(m>=60){const h=m/60|0,mm=m%60;return h+'시간'+(mm?' '+mm+'분':'');}return m+'분';};
 
-let cur=0, cells=[], REM=BASE, tick=null, ended=false, applied=false;
+let cur=0, cells=[], REM=BASE, tick=null, ended=false, applied=false, lastPct=0;
 
-function buildLevel(idx){
+function buildLevel(idx,animate){
   cur=idx; ended=false; applied=false; REM=BASE;
   const bd=BOARDS[idx]; cells=[];
   document.getElementById('overlay').classList.remove('show');
@@ -199,7 +226,7 @@ function buildLevel(idx){
     if(c===2) el.classList.add('box-edge-r'); if(r===1||r===3) el.classList.add('box-edge-b');
     const fixed=!!bd.weldMask[i]||!!bd.numLock[i], shape=bd.shape[i], base=SHAPE[shape];
     let rot=bd.solRot[i];
-    if(!fixed){const o=ORIENTS[shape]; if(o>1){let nr;do{nr=Math.random()*o|0;}while(nr===bd.solRot[i]);rot=nr;}}
+    if(!fixed && i!==bd.START){const o=ORIENTS[shape]; if(o>1){let nr;do{nr=Math.random()*o|0;}while(nr===bd.solRot[i]);rot=nr;}}
     const cell={i,r,c,shape,base,rot,welded:fixed,el,isStart:i===bd.START,isEnd:i===bd.END};
     if(fixed) el.classList.add('welded');
     if(cell.isStart) el.classList.add('startcell'); if(cell.isEnd) el.classList.add('endcell');
@@ -208,6 +235,7 @@ function buildLevel(idx){
     if(cell.isStart){const b=document.createElement('div');b.className='badge';b.textContent='시작';el.appendChild(b);}
     if(cell.isEnd){const b=document.createElement('div');b.className='badge endb';b.textContent='끝';el.appendChild(b);}
     el.addEventListener('click',()=>{if(ended)return;rotatePipe(cell);});
+    if(animate){el.style.setProperty('--dx',(Math.random()*100-50|0)+'px');el.style.setProperty('--dy',(Math.random()*100-50|0)+'px');el.style.animationDelay=(i*7)+'ms';el.classList.add('enter');}
     board.appendChild(el); cells.push(cell);
   }
   if(tick)clearInterval(tick); tick=setInterval(()=>{ if(ended)return; REM-=1; renderTimes(); }, 1000);
@@ -252,7 +280,7 @@ function renderAll(){
     if(!show){g.classList.add('empty');g.textContent='';}else{g.classList.add('c'+show);g.textContent=show;}
     drawPipe(c);
   });
-  const pct=Math.round(res.count/36*100), done=res.complete;
+  const pct=Math.round(res.count/36*100), done=res.complete; lastPct=pct;
   updateRing(pct,done);
   const sl=document.getElementById('statusLine'); let note, warn=false;
   if(done){ note='라인 완성! 가공을 가속합니다…'; }
@@ -274,7 +302,13 @@ function finish(){ if(applied||ended)return; applied=true; ended=true; if(tick)c
   showOverlay('⚡','가공 가속 성공!','남은 가공 시간 '+fmtHM(before)+' → <b style="color:#ffd9a0">'+fmtHM(after)+'</b> (×1.5). 약 '+fmtHM(before-after)+' 단축!'); }
 function showOverlay(ic,t1,t2){document.getElementById('ovIc').textContent=ic;document.getElementById('ovT1').textContent=t1;document.getElementById('ovT2').innerHTML=t2;document.getElementById('overlay').classList.add('show');}
 
-document.getElementById('reset').onclick=()=>buildLevel(cur);
+const rmodal=document.getElementById('resetModal');
+function doReset(){ rmodal.classList.remove('show'); let n=cur; if(BOARDS.length>1){do{n=Math.random()*BOARDS.length|0;}while(n===cur);} buildLevel(n,true); }
+document.getElementById('reset').onclick=()=>{ document.getElementById('cPct').textContent=lastPct+'%'; rmodal.classList.add('show'); };
+document.getElementById('cCancel').onclick=()=>rmodal.classList.remove('show');
+document.getElementById('cOk').onclick=doReset;
+rmodal.onclick=e=>{ if(e.target===rmodal) rmodal.classList.remove('show'); };
+document.addEventListener('keydown',e=>{ if(!rmodal.classList.contains('show'))return; if(e.key==='Escape'){rmodal.classList.remove('show');} else if(e.key===' '||e.code==='Space'){e.preventDefault();doReset();} });
 document.getElementById('ovCls').onclick=()=>document.getElementById('overlay').classList.remove('show');
 const HG=(n=4)=>{let s='';for(let r=0;r<n;r++)for(let c=0;c<n;c++)s+=`<rect x="${16+c*54}" y="${16+r*54}" width="46" height="46" rx="8" fill="#0c121a" stroke="#1b2531"/>`;return s;};
 const HELP=[
